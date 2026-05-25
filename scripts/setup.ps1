@@ -1,9 +1,9 @@
 # Diary Assistant — 安装脚本 (PowerShell)
-# 创建日记目录结构并部署模板文件
+# 配置文件和工作目录分离，日记输出路径保持干净
 
 param(
     [Parameter(Mandatory=$false)]
-    [string]$DiaryPath,
+    [string]$DiaryOutputPath,
 
     [Parameter(Mandatory=$true)]
     [string]$UserName,
@@ -23,115 +23,118 @@ function Write-Error {
     Write-Host "  ❌ $Message" -ForegroundColor Red
 }
 
-# ---- 获取脚本所在路径 ----
-$SkillPath = Split-Path -Parent $PSScriptRoot
+$ConfigPath = Split-Path -Parent $PSScriptRoot
 
-# ---- 交互式获取日记路径 ----
 Write-Host "=== 日记助手 Diary Assistant Setup ===" -ForegroundColor Cyan
 Write-Host ""
 
-if (-not $DiaryPath) {
-    $defaultPath = "D:\03\日记"
-    $input = Read-Host "请输入日记存储路径 (直接回车默认 $defaultPath)"
+# ========== 第1步：获取日记输出路径 ==========
+if (-not $DiaryOutputPath) {
+    $defaultPath = "D:\我的日记"
+    $input = Read-Host "请输入日记输出路径 (只有日记文件会放这里，不含配置文件，回车默认 $defaultPath)"
     if ([string]::IsNullOrWhiteSpace($input)) {
-        $DiaryPath = $defaultPath
+        $DiaryOutputPath = $defaultPath
     } else {
-        $DiaryPath = $input
+        $DiaryOutputPath = $input
     }
 }
-$DiaryPath = $DiaryPath.TrimEnd('\')
+$DiaryOutputPath = $DiaryOutputPath.TrimEnd('\')
 
 # 验证路径是否可写
 try {
-    $testFile = "$DiaryPath\.write-test"
+    $testFile = "$DiaryOutputPath\.write-test"
     New-Item -ItemType File -Path $testFile -Force | Out-Null
     Remove-Item -Path $testFile -Force
 } catch {
-    Write-Error "目录 [$DiaryPath] 不可写入，请检查路径和权限。"
+    Write-Error "目录 [$DiaryOutputPath] 不可写入，请检查路径和权限。"
     exit 1
 }
 
-# ---- 创建目录结构 ----
+# ========== 第2步：创建配置目录结构（跟日记分开） ==========
 Write-Host ""
-Write-Host "[1/5] 创建目录结构..." -ForegroundColor Yellow
+Write-Host "[1/4] 创建配置目录结构..." -ForegroundColor Yellow
 try {
-    New-Item -ItemType Directory -Force -Path "$DiaryPath\raw" | Out-Null
-    New-Item -ItemType Directory -Force -Path "$DiaryPath\memory" | Out-Null
-    # 预创建当年当月目录
+    New-Item -ItemType Directory -Force -Path "$ConfigPath\raw" | Out-Null
+    New-Item -ItemType Directory -Force -Path "$ConfigPath\memory" | Out-Null
+    Write-Step "✅ 配置文件目录: $ConfigPath"
+    Write-Step "✅ 暂存目录: $ConfigPath\raw"
+    Write-Step "✅ 记忆目录: $ConfigPath\memory"
+} catch {
+    Write-Error "配置目录创建失败：$_"
+    exit 1
+}
+
+# ========== 第3步：创建日记输出目录结构（纯日记） ==========
+Write-Host ""
+Write-Host "[2/4] 创建日记输出目录..." -ForegroundColor Yellow
+try {
     $nowYear = (Get-Date).ToString("yyyy")
     $nowMonth = (Get-Date).ToString("MM")
-    New-Item -ItemType Directory -Force -Path "$DiaryPath\$nowYear\$nowMonth" | Out-Null
-    Write-Step "✅ $DiaryPath"
-    Write-Step "✅ $DiaryPath\raw\"
-    Write-Step "✅ $DiaryPath\memory\"
-    Write-Step "✅ $DiaryPath\$nowYear\$nowMonth\"
+    New-Item -ItemType Directory -Force -Path "$DiaryOutputPath\$nowYear\$nowMonth" | Out-Null
+    Write-Step "✅ 日记输出目录: $DiaryOutputPath (纯日记，无配置文件)"
 } catch {
-    Write-Error "目录创建失败：$_"
+    Write-Error "日记输出目录创建失败：$_"
     exit 1
 }
 
-# ---- 部署 SOUL.md ----
+# ========== 第4步：部署 SOUL.md（配置文件区，不是日记区） ==========
 Write-Host ""
-Write-Host "[2/5] 部署 SOUL.md..." -ForegroundColor Yellow
+Write-Host "[3/4] 部署配置文件..." -ForegroundColor Yellow
 try {
-    $soul = Get-Content "$SkillPath\templates\SOUL.md" -Raw
+    $soul = Get-Content "$ConfigPath\templates\SOUL.md" -Raw
     $soul = $soul -replace '{{USER_NAME}}', $UserName
-    Set-Content -Path "$DiaryPath\SOUL.md" -Value $soul
-    Write-Step "✅ $DiaryPath\SOUL.md"
+    Set-Content -Path "$ConfigPath\SOUL.md" -Value $soul
+    Write-Step "✅ $ConfigPath\SOUL.md"
 } catch {
     Write-Error "SOUL.md 部署失败：$_"
     exit 1
 }
 
-# ---- 部署 USER.md ----
-Write-Host "[3/5] 部署 USER.md..." -ForegroundColor Yellow
 try {
-    $user = Get-Content "$SkillPath\templates\USER.md" -Raw
+    $user = Get-Content "$ConfigPath\templates\USER.md" -Raw
     $user = $user -replace '{{USER_NAME}}', $UserName
-    $user = $user -replace '{{DIARY_PATH}}', $DiaryPath
+    $user = $user -replace '{{DIARY_PATH}}', $DiaryOutputPath
     $user = $user -replace '{{TIMEZONE}}', $Timezone
-    Set-Content -Path "$DiaryPath\USER.md" -Value $user
-    Write-Step "✅ $DiaryPath\USER.md"
+    Set-Content -Path "$ConfigPath\USER.md" -Value $user
+    Write-Step "✅ $ConfigPath\USER.md"
 } catch {
     Write-Error "USER.md 部署失败：$_"
     exit 1
 }
 
-# ---- 部署 FACT.md ----
-Write-Host "[4/5] 部署 FACT.md..." -ForegroundColor Yellow
 try {
-    $fact = Get-Content "$SkillPath\templates\memory\FACT.md" -Raw
-    $fact = $fact -replace '{{DIARY_PATH}}', $DiaryPath
+    $fact = Get-Content "$ConfigPath\templates\memory\FACT.md" -Raw
+    $fact = $fact -replace '{{DIARY_PATH}}', $ConfigPath
+    $fact = $fact -replace '{{DIARY_OUTPUT_PATH}}', $DiaryOutputPath
     $fact = $fact -replace '{{TIMEZONE}}', $Timezone
-    Set-Content -Path "$DiaryPath\memory\FACT.md" -Value $fact
-    Write-Step "✅ $DiaryPath\memory\FACT.md"
+    Set-Content -Path "$ConfigPath\memory\FACT.md" -Value $fact
+    Write-Step "✅ $ConfigPath\memory\FACT.md"
 } catch {
     Write-Error "FACT.md 部署失败：$_"
     exit 1
 }
 
-# ---- 完成 ----
+# ========== 第5步：验证 ==========
 Write-Host ""
-Write-Host "[5/5] 配置验证..." -ForegroundColor Yellow
+Write-Host "[4/4] 配置验证..." -ForegroundColor Yellow
 
 $allOk = $true
-if (-not (Test-Path "$DiaryPath\SOUL.md")) { Write-Error "SOUL.md 未找到"; $allOk = $false }
-if (-not (Test-Path "$DiaryPath\USER.md")) { Write-Error "USER.md 未找到"; $allOk = $false }
-if (-not (Test-Path "$DiaryPath\memory\FACT.md")) { Write-Error "FACT.md 未找到"; $allOk = $false }
-if (-not (Test-Path "$DiaryPath\raw")) { Write-Error "raw/ 目录未找到"; $allOk = $false }
+if (-not (Test-Path "$ConfigPath\SOUL.md")) { Write-Error "SOUL.md 未找到"; $allOk = $false }
+if (-not (Test-Path "$ConfigPath\USER.md")) { Write-Error "USER.md 未找到"; $allOk = $false }
+if (-not (Test-Path "$ConfigPath\memory\FACT.md")) { Write-Error "FACT.md 未找到"; $allOk = $false }
+if (-not (Test-Path "$ConfigPath\raw")) { Write-Error "raw/ 目录未找到"; $allOk = $false }
 
 if ($allOk) {
     Write-Host ""
     Write-Host "=== 安装完成！===" -ForegroundColor Cyan
     Write-Host ""
+    Write-Host "📁 配置文件区：$ConfigPath" -ForegroundColor Gray
+    Write-Host "📁 日记输出区：$DiaryOutputPath（只有日记文件，干净）" -ForegroundColor Gray
+    Write-Host ""
     Write-Host "下一步操作：" -ForegroundColor Yellow
     Write-Host "  1. 连接消息通道（微信/Telegram）"
-    Write-Host "  2. 设置每天 06:00 的自动汇总定时任务"
+    Write-Host "  2. 设置每天 06:00 的自动汇总定时任务（写入 $DiaryOutputPath）"
     Write-Host "  3. 开始发送日记消息！"
-    Write-Host ""
-    Write-Host "使用示例：" -ForegroundColor Gray
-    Write-Host "  你：起床啦"
-    Write-Host "  AI：已记下 ✅ 07:30"
 } else {
     Write-Host ""
     Write-Error "部分文件部署失败，请检查后重试。"

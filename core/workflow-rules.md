@@ -41,12 +41,32 @@
 ↓
 按时间线，用第一人称「我」的口吻写成日记
 ↓
-写入 YYYY/MM/YYYY-MM-DD.md
+写入 {日记输出路径}/YYYY/MM/YYYY-MM-DD.md
 ↓
 删除 raw/YYYY-MM-DD.md
 ↓
 发送通知：「昨天的日记已写好 📖」
 ```
+
+## 路径分离（重要）
+
+配置文件区和日记输出区完全分开：
+
+```
+配置文件区（Agent 工作目录）
+├── SOUL.md              ← 助手身份
+├── USER.md              ← 用户信息
+├── memory/
+│   └── FACT.md          ← 工作流规则
+└── raw/                 ← 白天暂存
+
+日记输出区（用户指定路径）   ← ★ 只有日记，干净
+└── YYYY/
+    └── MM/
+        └── YYYY-MM-DD.md
+```
+
+用户指定的路径里**不会有** SOUL.md、USER.md、memory/、raw/ 这些文件。
 
 ## 文件结构
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.0 (2026-05-25)
+
+### 🔧 核心改进
+
+- **路径分离**：配置文件和日记输出彻底分开，用户指定的路径只放 YYYY/MM/YYYY-MM-DD.md，不含 SOUL.md、USER.md、memory/、raw/ 等配置文件
+- **setup.ps1 重构**：改为询问日记输出路径（DiaryOutputPath），配置文件留在工作目录
+- **模板变量更新**：`{{DIARY_OUTPUT_PATH}}` 独立于 `{{DIARY_PATH}}`，两个变量各司其职
+- **文档更新**：core/workflow-rules.md、SKILL.md 加入路径分离说明和结构示意
+
 ## v1.1.1 (2026-05-25)
 
 ### 🐛 修复
