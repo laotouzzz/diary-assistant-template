@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.4.1 (2026-05-25)
+
+### 📝 文档补充
+
+- **core/workflow-rules.md**：新增「不同通道的时间戳精度」对比表格，说明飞书/Telegram 官方 API 秒级精度 vs 微信桥接的延迟差异
+- **templates/memory/FACT.md**：同步新增时间戳精度说明
+
 ## v1.4.0 (2026-05-25)
 
 ### ✨ 新功能
