@@ -1,112 +1,133 @@
-# Diary Assistant — Workflow Rules (Platform Agnostic)
+# 日记助手 — 工作流规则（平台无关）
 
-This document defines the core workflow logic for a diary assistant.
-It is designed to be implemented on any AI agent platform (CherryClaw, Claude Code, Cursor, custom scripts, etc.).
+本文档定义了日记助手的核心工作流逻辑，可在任何 AI Agent 平台（CherryClaw、Claude Code、Cursor 等）上实现。
 
 ---
 
-## Data Flow
+## ⚠️ 重要：时间戳获取说明
+
+**这是整个流程最容易出问题的环节，请务必注意。**
+
+时间戳规则：
+1. 消息内容里带了时间 → 优先用内容里的时间（用户可能事后补记）
+2. 否则 → 用用户发送消息的时刻
+
+**如何获取准确的发送时刻：**
+- 当收到用户消息时，**第一件事**就是获取系统当前时间（`date +"%H:%M"` 或等效方法）
+- **不要**在处理完消息内容之后再取时间——处理过程可能消耗数秒甚至更久
+- 如果平台提供了消息元数据中的时间戳，优先使用元数据中的时间
+
+**常见问题：**
+- 如果消息通道有延迟（比如网络问题），取到的时间会比用户实际发送时间偏晚
+- 使用低延迟的消息通道（微信桌面桥接、Telegram Bot API）可最小化误差
+- 这是平台层面的限制，核心规则文档无法彻底解决，需在具体实现中优化
+
+---
+
+## 数据流
 
 ```
-User sends message → Capture send timestamp
-  ├─ Message contains time reference? → Use that time (for backfilling)
-  └─ Otherwise → Use the send timestamp
+用户发消息 → 立即抓取发送时刻（第一优先级动作）
+  ├─ 内容含时间？→ 用内容里的时间（事后补记）
+  └─ 否则 → 用抓取到的发送时刻
 ↓
-Append to raw/YYYY-MM-DD.md  (format: "HH:MM message content")
+追加到 raw/YYYY-MM-DD.md（格式："HH:MM 消息内容"）
 ↓
-Reply briefly: "已记下 ✅"
+回复简洁确认：「已记下 ✅」
 ↓
-[At 06:00 daily / or user says "收工/睡了"]
+[每天 06:00 定时 / 或用户说"收工/睡了"]
 ↓
-Read raw/YYYY-MM-DD.md
+读取 raw/YYYY-MM-DD.md
 ↓
-Compose diary in first-person "I" voice, chronologically
+按时间线，用第一人称「我」的口吻写成日记
 ↓
-Write to YYYY/MM/YYYY-MM-DD.md
+写入 YYYY/MM/YYYY-MM-DD.md
 ↓
-Delete raw/YYYY-MM-DD.md
+删除 raw/YYYY-MM-DD.md
 ↓
-Send notification: "昨天的日记已写好 📖"
+发送通知：「昨天的日记已写好 📖」
 ```
 
-## File Structure
+## 文件结构
 
 ```
-{diary_root}/
+{日记根目录}/
 ├── raw/
-│   └── YYYY-MM-DD.md        # Raw entries during the day
+│   └── YYYY-MM-DD.md        # 白天暂存的原始记录
 ├── YYYY/
 │   └── MM/
-│       └── YYYY-MM-DD.md    # Final diary
+│       └── YYYY-MM-DD.md    # 成品日记
 ```
 
-## Raw Entry Format
+## 原始记录格式
 
-Each line in `raw/YYYY-MM-DD.md`:
-```
-HH:MM  content description here
-```
+`raw/YYYY-MM-DD.md` 每行一条：
 
-Example:
 ```
-07:30  woke up
-12:15  had lunch - noodles
-14:00  went out for a walk
-22:30  damn, can't sleep again
+HH:MM  内容描述
 ```
 
-## Final Diary Format
+示例：
+```
+07:30  起床了
+12:15  中午吃的面条
+14:00  出门溜达了一圈
+22:30  他妈的又失眠了
+```
+
+## 成品日记格式
 
 ```markdown
-# YYYY-MM-DD Diary
+# YYYY-MM-DD 日记
 
-**07:30** Woke up, didn't linger in bed today.
+**07:30** 今天起得不算晚，醒了就爬起来了，没赖床。
 
-**12:15** Had some noodles for lunch, nothing fancy.
+**12:15** 中午随便吃了点面条，填饱肚子就行。
 
-**14:00** Took a walk outside, weather was decent.
+**14:00** 下午出门溜达了一圈，天气还行，透透气。
 
-**22:30** Fuck, can't sleep again. Should've worked out.
+**22:30** 他妈的又失眠了，应该去健身的。
 ```
 
-## Trigger Conditions
+## 触发条件
 
-| Trigger | Timing | Action |
-|---------|--------|--------|
-| Scheduled | Daily at 06:00 | Auto-summarize previous day |
-| Manual: "收工/睡了/下班" | On user command | Immediate summary |
+| 触发方式 | 时机 | 操作 |
+|---------|------|------|
+| 定时任务 | 每天 06:00 | 自动汇总前一天记录 |
+| 手动触发 | 用户说"收工/睡了/下班了" | 立即执行汇总 |
 
-## Time Priority Rule
+## 时间优先级规则
 
-When recording an entry:
-1. If the message **content** mentions a time → use that time
-2. Otherwise → use the message's send timestamp
+记录时按以下优先级判断：
+1. 消息**内容**包含时间 → 使用内容里的时间
+2. 否则 → 使用消息发送时刻
 
-This allows the user to backfill events they forgot to report in real-time.
+这样用户可以在事后补记之前发生的事。
 
-Example:
-- User sends at 20:00: "中午吃的面条" → Record as **12:00**, not 20:00
-- User sends at 15:30: "出门溜达" → Record as **15:30**
+示例：
+- 用户在 20:00 发送「中午吃的面条」→ 记录为 **12:00**，不是 20:00
+- 用户在 15:30 发送「出门溜达」→ 记录为 **15:30**
 
-## Implementation Notes by Platform
+## 各平台实现说明
 
 ### CherryClaw
-- Uses `mcp__claw__cron` for scheduled tasks
-- Uses `mcp__claw__notify` for notifications
-- Uses `mcp__claw__config` for channel management
-- SOUL.md and USER.md are auto-loaded by the agent
+- 使用 `mcp__claw__cron` 管理定时任务
+- 使用 `mcp__claw__notify` 发送通知
+- 使用 `mcp__claw__config` 管理消息通道
+- SOUL.md 和 USER.md 由 Agent 系统自动加载
+- 时间戳获取：处理用户消息时立即执行 `date +"%H:%M"`
 
 ### Claude Code
-- Uses `CLAUDE.md` for agent rules
-- Uses `claude_code.md` hooks or cron for scheduling
-- No built-in notification system (use system notifications)
-- File operations via Bash/Read/Write tools
+- 使用 `CLAUDE.md` 配置 Agent 规则
+- 定时任务通过系统 cron 或 hooks 实现
+- 无内置通知系统（可用系统通知替代）
+- 文件操作通过 Bash/Read/Write 工具
 
 ### Cursor
-- Uses `.cursorrules` for agent rules
-- Manual scheduling or external cron
-- File operations via Cursor's built-in tools
+- 使用 `.cursorrules` 配置 Agent 规则
+- 定时任务需手动设置或依赖外部 cron
+- 文件操作通过 Cursor 内置工具
 
-### Custom Implementation
-- Any AI agent with file read/write + scheduling capabilities
-- Adapt the cron/notification parts to your platform
+### 自行实现
+- 任何具备文件读写 + 定时调度能力的 AI Agent 均可适配
+- 根据你的平台调整 cron 和通知部分的实现

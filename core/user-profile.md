@@ -1,32 +1,32 @@
-# Diary Assistant — User Profile Template (Platform Agnostic)
+# 日记助手 — 用户信息填写模板（平台无关）
 
-Fill in these fields to personalize your diary assistant.
+填写以下字段来定制你的专属日记助手。
 
 ---
 
-## Basic Info
+## 基本信息
 
-| Field | Example | Your Value |
-|-------|---------|------------|
-| Name/Nickname | 老头 | ________ |
-| Language | Chinese (Simplified) | ________ |
-| Timezone | UTC+8 (China Standard) | ________ |
+| 字段 | 示例 | 你的值 |
+|------|------|--------|
+| 称呼 | 老头 | ________ |
+| 语言 | 中文（简体） | ________ |
+| 时区 | UTC+8（北京时间） | ________ |
 
-## Preferences
+## 偏好设置
 
-| Preference | Default | Your Value |
-|------------|---------|------------|
-| Diary storage path | `D:\03\日记\` | ________ |
-| Raw temp path | `{diary_path}raw\` | ________ |
-| Diary file format | `YYYY-MM-DD.md` | ________ |
-| Archive structure | `YYYY/MM/YYYY-MM-DD.md` | ________ |
-| Acknowledgment style | Brief, e.g. "已记下 ✅" | ________ |
-| Summary time | Daily 06:00 | ________ |
+| 偏好项 | 默认值 | 你的值 |
+|--------|--------|--------|
+| 日记存储路径 | `D:\03\日记\` | ________ |
+| 原始暂存路径 | `{日记路径}raw\` | ________ |
+| 日记文件格式 | `YYYY-MM-DD.md` | ________ |
+| 归档结构 | `YYYY/MM/YYYY-MM-DD.md` | ________ |
+| 确认风格 | 简洁，如"已记下 ✅" | ________ |
+| 汇总时间 | 每天 06:00 | ________ |
 
-## Communication Channel
+## 消息通道
 
-| Channel | Setup Method |
-|---------|-------------|
-| WeChat | Desktop client bridge (QR code) |
-| Telegram | Bot API (`@BotFather`) |
-| Other | ________ |
+| 通道 | 接入方式 |
+|------|---------|
+| 微信 | 桌面客户端桥接（扫码） |
+| Telegram | Bot API（`@BotFather` 创建） |
+| 其他 | ________ |
