@@ -1,0 +1,12 @@
+# Diary storage (auto-generated during use)
+diary/
+raw/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor temp files
+*.swp
+*.swo
+*~
